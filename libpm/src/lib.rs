@@ -2,6 +2,8 @@
 
 mod flatpak;
 mod install_status;
+mod installed;
+pub use installed::InstalledPackages;
 mod nix;
 mod paru;
 mod search;
@@ -32,7 +34,9 @@ pub struct App {
 
 impl App {
     pub fn icon_path(&self) -> Option<String> {
-        self.icon.as_ref().map(|hash| format!("{ICON_DIR}/{hash}.webp"))
+        self.icon
+            .as_ref()
+            .map(|hash| format!("{ICON_DIR}/{hash}.webp"))
     }
 }
 
@@ -67,6 +71,15 @@ impl PackageManager {
             .iter()
             .filter_map(|id| self.apps.iter().find(|app| app.id == *id).cloned())
             .collect())
+    }
+
+    pub fn uninstall(&self, app_id: u64) -> Result<()> {
+        let app = self
+            .apps
+            .iter()
+            .find(|app| app.id == app_id)
+            .with_context(|| format!("app {app_id} is not in the package catalog"))?;
+        installed::uninstall(&app.package_source)
     }
 
     pub fn install(&self, app_id: u64) -> Result<InstallOutcome> {

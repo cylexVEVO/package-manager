@@ -12,3 +12,15 @@ fn install_rejects_an_unknown_app_id() {
         format!("app {} is not in the package catalog", u64::MAX)
     );
 }
+
+#[test]
+fn uninstall_rejects_an_unknown_app_id() {
+    let manager = PackageManager::init().expect("package manager should initialize");
+    let error = manager
+        .uninstall(u64::MAX)
+        .expect_err("unknown IDs must not reach a package manager");
+    assert_eq!(
+        error.to_string(),
+        format!("app {} is not in the package catalog", u64::MAX)
+    );
+}
