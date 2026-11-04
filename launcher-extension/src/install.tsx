@@ -1,11 +1,11 @@
-import { Action, ActionPanel, closeMainWindow, List, PopToRootType } from "@vicinae/api";
+import { Action, ActionPanel, Alert, confirmAlert, showToast, Toast, closeMainWindow, List, PopToRootType } from "@vicinae/api";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { useEffect, useRef, useState } from "react";
 
-type App = { id: number; name: string; icon: string | null };
-type Status = "Installing" | "Installed ✓" | "Failed";
+type App = { id: number; name: string; icon: string | null; installed: boolean | null };
+type Status = "Installing" | "Installed ✓" | "Uninstalling" | "Uninstalled" | "Failed";
 const bridgePath = join(__dirname, "bin", "pm-extension-bridge");
 const noIcon = join(__dirname, "assets", "no-icon.webp");
 
@@ -67,13 +67,26 @@ export default function InstallApps() {
     child.stdin.write(`${JSON.stringify(query)}\n`);
   }, [query]);
 
-  async function install(app: App) {
-    if (installing.current.has(app.id) || statuses[app.id] === "Installed ✓") return;
+  async function manage(app: App, operation: "install" | "uninstall") {
+    if (installing.current.has(app.id)) return;
     installing.current.add(app.id);
-    setStatuses((current) => ({ ...current, [app.id]: "Installing" }));
+    if (operation === "uninstall" && !(await confirmAlert({
+      title: `Uninstall ${app.name}?`,
+      message: "Remove this application? Personal app data will be kept where supported by the package manager.",
+      primaryAction: { title: "Uninstall", style: Alert.ActionStyle.Destructive },
+    }))) {
+      installing.current.delete(app.id);
+      return;
+    }
+    setStatuses((current) => ({ ...current, [app.id]: operation === "install" ? "Installing" : "Uninstalling" }));
     const finish = (status: Status) => {
       installing.current.delete(app.id);
       setStatuses((current) => ({ ...current, [app.id]: status }));
+      if (status !== "Failed") {
+        setApps((current) => current.map((item) => item.id === app.id ? { ...item, installed: operation === "install" } : item));
+      }
+      void showToast({ style: status === "Failed" ? Toast.Style.Failure : Toast.Style.Success,
+        title: status === "Failed" ? `Failed to ${operation} ${app.name}` : `${operation === "install" ? "Installed" : "Uninstalled"} ${app.name}` });
     };
     try {
       // Release launcher focus before a package manager opens authentication.
@@ -85,17 +98,17 @@ export default function InstallApps() {
     }
     // Install output is separate from the search protocol, and leaving the view
     // must not terminate the package manager midway through a transaction.
-    const child = spawn(bridgePath, ["install", String(app.id)], {
+    const child = spawn(bridgePath, [operation, String(app.id)], {
       detached: true,
       stdio: "ignore",
     });
     child.once("error", () => finish("Failed"));
-    child.once("exit", (code) => finish(code === 0 ? "Installed ✓" : "Failed"));
+    child.once("exit", (code) => finish(code === 0 ? (operation === "install" ? "Installed ✓" : "Uninstalled") : "Failed"));
     child.unref();
   }
 
   return (
-    <List filtering={false} isLoading={loading} searchBarPlaceholder="Install:" onSearchTextChange={setQuery}>
+    <List filtering={false} isLoading={loading} searchBarPlaceholder="Search apps to install or uninstall:" onSearchTextChange={setQuery}>
       <List.EmptyView title={failed ? "Failed" : loading ? "Loading…" : "No apps found"} />
       {apps.map((app) => (
         <List.Item
@@ -103,11 +116,12 @@ export default function InstallApps() {
           id={String(app.id)}
           title={app.name}
           icon={app.icon ? { source: app.icon, fallback: noIcon } : noIcon}
-          accessories={[{ text: statuses[app.id] ?? "Install" }]}
+          accessories={[{ text: statuses[app.id] ?? (app.installed ? "Installed ✓" : "Install") }]}
           actions={
             <ActionPanel>
-              {!installing.current.has(app.id) && statuses[app.id] !== "Installed ✓" && (
-                <Action title="Install" onAction={() => install(app)} />
+              {!installing.current.has(app.id) && (
+                (statuses[app.id] === "Installed ✓" || (statuses[app.id] !== "Uninstalled" && app.installed)) ? <Action title="Uninstall" style={Action.Style.Destructive} onAction={() => manage(app, "uninstall")} />
+                  : <Action title="Install" onAction={() => manage(app, "install")} />
               )}
             </ActionPanel>
           }

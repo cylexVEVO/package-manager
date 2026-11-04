@@ -1,7 +1,7 @@
 use std::io::{self, BufRead, Write};
 
 use anyhow::{bail, Context, Result};
-use libpm::PackageManager;
+use libpm::{InstalledPackages, PackageManager};
 use serde_json::json;
 
 fn search() -> Result<()> {
@@ -10,12 +10,13 @@ fn search() -> Result<()> {
 
     for line in io::stdin().lock().lines() {
         let query: String = serde_json::from_str(&line?)?;
+        let installed = InstalledPackages::query();
         let response = match manager.search(&query, 50) {
             Ok(apps) => json!({
                 "query": query,
                 "apps": apps
                     .iter()
-                    .map(|app| json!({ "id": app.id, "name": app.name, "icon": app.icon_path() }))
+                    .map(|app| json!({ "id": app.id, "name": app.name, "icon": app.icon_path(), "installed": installed.contains(&app.package_source) }))
                     .collect::<Vec<_>>(),
             }),
             Err(error) => {
@@ -40,7 +41,11 @@ fn main() -> Result<()> {
             let id = args.next().context("missing app ID")?.parse()?;
             PackageManager::init()?.install(id)?;
         }
-        _ => bail!("usage: pm-extension-bridge search | install <app-id>"),
+        Some("uninstall") => {
+            let id = args.next().context("missing app ID")?.parse()?;
+            PackageManager::init()?.uninstall(id)?;
+        }
+        _ => bail!("usage: pm-extension-bridge search | install <app-id> | uninstall <app-id>"),
     }
 
     Ok(())
