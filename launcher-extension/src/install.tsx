@@ -108,7 +108,7 @@ export default function InstallApps() {
   }
 
   return (
-    <List filtering={false} isLoading={loading} searchBarPlaceholder="Search apps to install or uninstall:" onSearchTextChange={setQuery}>
+    <List filtering={false} isLoading={loading} searchBarPlaceholder="Search apps…" onSearchTextChange={setQuery}>
       <List.EmptyView title={failed ? "Failed" : loading ? "Loading…" : "No apps found"} />
       {apps.map((app) => (
         <List.Item
