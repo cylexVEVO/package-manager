@@ -5,7 +5,7 @@ import { createInterface } from "node:readline";
 import { useEffect, useRef, useState } from "react";
 
 type App = { id: number; name: string; icon: string | null; installed: boolean | null };
-type Status = "Installing" | "Installed" | "Uninstalling" | "Uninstalled" | "Failed";
+type Status = "Installing" | "Installed ✓" | "Uninstalling" | "Uninstalled" | "Failed";
 const bridgePath = join(__dirname, "bin", "pm-extension-bridge");
 const noIcon = join(__dirname, "assets", "no-icon.webp");
 
@@ -72,6 +72,7 @@ export default function InstallApps() {
     installing.current.add(app.id);
     if (operation === "uninstall" && !(await confirmAlert({
       title: `Uninstall ${app.name}?`,
+      message: "Remove this application? Personal app data will be kept where supported by the package manager.",
       primaryAction: { title: "Uninstall", style: Alert.ActionStyle.Destructive },
     }))) {
       installing.current.delete(app.id);
@@ -85,8 +86,7 @@ export default function InstallApps() {
         setApps((current) => current.map((item) => item.id === app.id ? { ...item, installed: operation === "install" } : item));
       }
       void showToast({ style: status === "Failed" ? Toast.Style.Failure : Toast.Style.Success,
-        title: status === "Failed" ? `${operation === "install" ? "Install" : "Uninstall"} failed` : status,
-        message: app.name });
+        title: status === "Failed" ? `Failed to ${operation} ${app.name}` : `${operation === "install" ? "Installed" : "Uninstalled"} ${app.name}` });
     };
     try {
       // Release launcher focus before a package manager opens authentication.
@@ -103,7 +103,7 @@ export default function InstallApps() {
       stdio: "ignore",
     });
     child.once("error", () => finish("Failed"));
-    child.once("exit", (code) => finish(code === 0 ? (operation === "install" ? "Installed" : "Uninstalled") : "Failed"));
+    child.once("exit", (code) => finish(code === 0 ? (operation === "install" ? "Installed ✓" : "Uninstalled") : "Failed"));
     child.unref();
   }
 
@@ -116,11 +116,11 @@ export default function InstallApps() {
           id={String(app.id)}
           title={app.name}
           icon={app.icon ? { source: app.icon, fallback: noIcon } : noIcon}
-          accessories={[{ text: statuses[app.id] ?? (app.installed ? "Installed" : "Install") }]}
+          accessories={[{ text: statuses[app.id] ?? (app.installed ? "Installed ✓" : "Install") }]}
           actions={
             <ActionPanel>
               {!installing.current.has(app.id) && (
-                (statuses[app.id] === "Installed" || (statuses[app.id] !== "Uninstalled" && app.installed)) ? <Action title="Uninstall" style={Action.Style.Destructive} onAction={() => manage(app, "uninstall")} />
+                (statuses[app.id] === "Installed ✓" || (statuses[app.id] !== "Uninstalled" && app.installed)) ? <Action title="Uninstall" style={Action.Style.Destructive} onAction={() => manage(app, "uninstall")} />
                   : <Action title="Install" onAction={() => manage(app, "install")} />
               )}
             </ActionPanel>
