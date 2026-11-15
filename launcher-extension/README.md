@@ -1,6 +1,6 @@
 # Vicinae package manager
 
-Open **Install apps**, search for an application, and open its actions. Installed
+Open **Apps**, search for an application, and open its actions. Installed
 catalog apps offer **Uninstall**, with a confirmation before removal. After
 removal, **Install** becomes available again. The command also matches the
 keywords `uninstall`, `remove`, and `manage`.

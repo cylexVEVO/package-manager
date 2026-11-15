@@ -4,7 +4,7 @@
   "private": true,
   "title": "pm",
   "hideExtensionName": true,
-  "description": "Search, install, and uninstall apps with libpm.",
+  "description": "Install and uninstall apps.",
   "author": "bflycomputer",
   "license": "BSD-3-Clause",
   "icon": "install.svg",
@@ -13,10 +13,10 @@
   "commands": [
     {
       "name": "install",
-      "title": "Install apps",
-      "description": "Search for apps to install or uninstall.",
+      "title": "Apps",
+      "description": "Install and uninstall apps.",
       "mode": "view",
-      "keywords": ["packages", "software", "download", "uninstall", "remove", "manage"]
+      "keywords": ["install", "packages", "software", "download", "uninstall", "remove", "manage"]
     }
   ],
   "scripts": {
